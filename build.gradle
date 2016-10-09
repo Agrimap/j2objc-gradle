@@ -15,6 +15,15 @@
  */
 // Based on https://plugins.gradle.org/docs/publish-plugin
 
+// buildscript {
+//     repositories {
+//         mavenLocal()
+//     }
+//     dependencies {
+//         classpath "com.gradle.publish:plugin-publish-plugin:0.9.4"
+//     }
+// }
+
 plugins {
     id "com.gradle.plugin-publish" version "0.9.1"
     // Outputs a BuildInfo.java file with information about the git repo;
