@@ -10,7 +10,7 @@
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
+ * See the License for the specific language go√verning permissions and
  * limitations under the License.
  */
 // Based on https://plugins.gradle.org/docs/publish-plugin
@@ -29,18 +29,18 @@ dependencies {
     compile gradleApi()
 }
 
-
+sourceCompatibility = 1.7
 task wrapper(type: Wrapper) {
     gradleVersion = '2.4'
     distributionUrl = 'https://services.gradle.org/distributions/gradle-2.4-all.zip'
 }
 
-group = 'com.github.j2objccontrib.j2objcgradle'
+group = 'com.guerinet.j2objcgradle'
 
 // A suffix of -SNAPSHOT means this is not an official release of the
 // system, but built from an intermediate source tree.  Instructions:
 // https://github.com/j2objc-contrib/j2objc-gradle/blob/master/CONTRIBUTING.md#publishing-and-versioning
-version = '0.6.1-alpha-SNAPSHOT'
+version = '0.8.6'
 
 test {
     testLogging {
@@ -51,8 +51,8 @@ test {
 }
 
 pluginBundle {
-    website = 'https://www.github.com/j2objc-contrib/j2objc-gradle/'
-    vcsUrl = 'https://github.com/j2objc-contrib/j2objc-gradle'
+    website = 'https://github.com/jguerinet/j2objc-gradle/'
+    vcsUrl = 'https://github.com/jguerinet/j2objc-gradle/'
     description =
             "Gradle Plugin for J2ObjC, which is an open-source tool from Google that translates " +
             "Java source code to Objective-C for the iOS (iPhone/iPad) platform. The plugin is " +
@@ -65,7 +65,7 @@ pluginBundle {
 
     plugins {
         j2objcPlugin {
-            id = 'com.github.j2objccontrib.j2objcgradle'
+            id = 'com.guerinet.j2objcgradle'
             displayName = 'J2ObjC Gradle Plugin'
         }
     }
@@ -78,6 +78,6 @@ project.tasks.all {
 }
 
 buildStamp {
-    repoBaseUrl "https://github.com/j2objc-contrib/j2objc-gradle/tree/"
+    repoBaseUrl "https://github.com/jguerinet/j2objc-gradle/tree"
     packageName "com.github.j2objccontrib.j2objcgradle"
 }

@@ -21,7 +21,6 @@ import com.google.common.annotations.VisibleForTesting
 import groovy.transform.CompileStatic
 import org.gradle.api.DefaultTask
 import org.gradle.api.InvalidUserDataException
-import org.gradle.api.Project
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.TaskAction
@@ -66,84 +65,68 @@ class PodspecTask extends DefaultTask {
     //     https://guides.cocoapods.org/syntax/podspec.html#group_file_patterns
     @Input
     File getDestPodspecDirFile() { return J2objcConfig.from(project).getDestPodspecDirFile() }
+
     @Input
     File getDestLibDirFile() { return J2objcConfig.from(project).getDestLibDirFile() }
 
-    @Input
-    String getPodNameDebug() { "j2objc-${project.name}-debug" }
-    @Input
-    String getPodNameRelease() { "j2objc-${project.name}-release" }
+    String getBasePodName() {
+        return J2objcConfig.from(project).getPodName()
+    }
 
     @Input
     String getMinVersionIos() { return J2objcConfig.from(project).getMinVersionIos() }
-    @Input
-    String getMinVersionOsx() { return J2objcConfig.from(project).getMinVersionOsx() }
-    @Input
-    String getMinVersionWatchos() { return J2objcConfig.from(project).getMinVersionWatchos() }
 
     @OutputFile
-    File getPodspecDebug() {
-        return new File(getDestPodspecDirFile(), "${getPodNameDebug()}.podspec")
-    }
-    @OutputFile
-    File getPodspecRelease() {
-        return new File(getDestPodspecDirFile(), "${getPodNameRelease()}.podspec")
+    File getPodspec() {
+        return new File(getDestPodspecDirFile(), "${getBasePodName()}.podspec")
     }
 
 
     @TaskAction
     void podspecWrite() {
-
-        // Absolute path for header include, relative path for resource include
-        String headerIncludePath = getDestSrcMainObjDirFile().getAbsolutePath()
-
         // TODO: allow custom list of libraries
         // podspec paths must be relative to podspec file, which is in buildDir
         String resourceIncludePath = Utils.relativizeNonParent(getDestPodspecDirFile(), getDestSrcMainResourcesDirFile())
+        String relativeHeaderIncludePath = Utils.relativizeNonParent(getDestPodspecDirFile(), getDestSrcMainObjDirFile())
         // iOS packed libraries are shared with watchOS
-        String libDirIosDebug = Utils.relativizeNonParent(getDestPodspecDirFile(), new File(getDestLibDirFile(), 'iosDebug'))
-        String libDirIosRelease = Utils.relativizeNonParent(getDestPodspecDirFile(), new File(getDestLibDirFile(), 'iosRelease'))
-        String libDirOsxDebug = Utils.relativizeNonParent(getDestPodspecDirFile(), new File(getDestLibDirFile(), 'x86_64Debug'))
-        String libDirOsxRelease = Utils.relativizeNonParent(getDestPodspecDirFile(), new File(getDestLibDirFile(), 'x86_64Release'))
+        String libDirIos = Utils.relativizeNonParent(getDestPodspecDirFile(), new File(getDestLibDirFile(), 'iosRelease'))
 
         validateNumericVersion(getMinVersionIos(), 'minVersionIos')
-        validateNumericVersion(getMinVersionOsx(), 'minVersionOsx')
-        validateNumericVersion(getMinVersionWatchos(), 'minVersionWatchos')
 
-        String podspecContentsDebug =
-                genPodspec(getPodNameDebug(), headerIncludePath, resourceIncludePath,
-                        libDirIosDebug, libDirOsxDebug, libDirIosDebug,
-                        getMinVersionIos(), getMinVersionOsx(), getMinVersionWatchos(),
-                        getLibName(), getJ2objcHome())
-        String podspecContentsRelease =
-                genPodspec(getPodNameRelease(), headerIncludePath, resourceIncludePath,
-                        libDirIosRelease, libDirOsxRelease, libDirIosRelease,
-                        getMinVersionIos(), getMinVersionOsx(), getMinVersionWatchos(),
-                        getLibName(), getJ2objcHome())
+        J2objcConfig config = J2objcConfig.from(project)
+        String author = config.getPodAuthor()
+        String license = config.getPodLicense()
+        String homepageURL = config.getPodHomepageURL()
+        String sourceURL = config.getPodSourceURL()
+        String version = config.getPodVersion()
+
+        String podspecContents = genPodspec(getBasePodName(), relativeHeaderIncludePath, resourceIncludePath, libDirIos,
+                getMinVersionIos(), getLibName(), getJ2objcHome(), author, license, homepageURL, sourceURL, version)
 
         Utils.projectMkDir(project, getDestPodspecDirFile())
-        logger.debug("Writing debug podspec... ${getPodspecDebug()}")
-        getPodspecDebug().write(podspecContentsDebug)
-        logger.debug("Writing release podspec... ${getPodspecRelease()}")
-        getPodspecRelease().write(podspecContentsRelease)
+
+        // Delete the podspec if it exists already
+        if (getPodspec().exists()) {
+            getPodspec().delete()
+        }
+
+        logger.debug("Writing podspec... ${getPodspec()}")
+        getPodspec().write(podspecContents)
     }
 
     // Podspec references are relative to project.buildDir
     @VisibleForTesting
     static String genPodspec(String podname, String publicHeadersDir, String resourceDir,
-                             String libDirIos, String libDirOsx, String libDirWatchos,
-                             String minVersionIos, String minVersionOsx, String minVersionWatchos,
-                             String libName, String j2objcHome) {
+                             String libDirIos, String minVersionIos, String libName, String j2objcHome, String author,
+                             String license, String homepageURL, String sourceURL, String version) {
 
         // Relative paths for content referenced by CocoaPods
         validatePodspecPath(libDirIos, true)
-        validatePodspecPath(libDirOsx, true)
-        validatePodspecPath(libDirWatchos, true)
         validatePodspecPath(resourceDir, true)
 
         // Absolute paths for Xcode command line
         validatePodspecPath(j2objcHome, false)
-        validatePodspecPath(publicHeadersDir, false)
+        validatePodspecPath(publicHeadersDir, true)
 
         // TODO: CocoaPods strongly recommends switching from 'resources' to 'resource_bundles'
         // http://guides.cocoapods.org/syntax/podspec.html#resource_bundles
@@ -151,40 +134,44 @@ class PodspecTask extends DefaultTask {
         // TODO: replace xcconfig with {pod|user}_target_xcconfig
         // See 'Split of xcconfig' from: http://blog.cocoapods.org/CocoaPods-0.38/
 
+        String podsDirectory = "\$(PODS_ROOT)/$podname"
+
         // File and line separators assumed to be '/' and '\n' as podspec can only be used on OS X
-        return "Pod::Spec.new do |spec|\n" +
-               "  spec.name = '$podname'\n" +
-               "  spec.version = '1.0'\n" +
-               "  spec.summary = 'Generated by the J2ObjC Gradle Plugin.'\n" +
-               "  spec.resources = '$resourceDir/**/*'\n" +
-               "  spec.requires_arc = true\n" +
-               "  spec.libraries = " +  // continuation of same line
-               "'ObjC', 'guava', 'javax_inject', 'jre_emul', 'jsr305', 'z', 'icucore'\n" +
-               "  spec.ios.vendored_libraries = '$libDirIos/lib${libName}.a'\n" +
-               "  spec.osx.vendored_libraries = '$libDirOsx/lib${libName}.a'\n" +
-               "  spec.watchos.vendored_libraries = '$libDirWatchos/lib${libName}.a'\n" +
-               "  spec.xcconfig = {\n" +
-               "    'HEADER_SEARCH_PATHS' => '$j2objcHome/include $publicHeadersDir'\n" +
-               "  }\n" +
-               "  spec.ios.xcconfig = {\n" +
-               "    'LIBRARY_SEARCH_PATHS' => '$j2objcHome/lib'\n" +
-               "  }\n" +
-               "  spec.osx.xcconfig = {\n" +
-               "    'LIBRARY_SEARCH_PATHS' => '$j2objcHome/lib/macosx'\n" +
-               "  }\n" +
-               "  spec.watchos.xcconfig = {\n" +
-               "    'LIBRARY_SEARCH_PATHS' => '$j2objcHome/lib'\n" +
-               "  }\n" +
-                // http://guides.cocoapods.org/syntax/podspec.html#deployment_target
-               "  spec.ios.deployment_target = '$minVersionIos'\n" +
-               "  spec.osx.deployment_target = '$minVersionOsx'\n" +
-               "  spec.watchos.deployment_target = '$minVersionWatchos'\n" +
-               "  spec.osx.frameworks = 'ExceptionHandling'\n" +
+        return "Pod::Spec.new do |s|\n" +
+               "    s.name = '$podname'\n" +
+               "    s.version = '$version'\n" +
+               "    s.summary = 'Generated by the J2ObjC Gradle Plugin.'\n" +
+               "    s.homepage = '$homepageURL'\n" +
+               "    s.license = '$license'\n" +
+               "    s.author = '$author'\n" +
+               "    s.source = { :git => '$sourceURL', :tag => s.version.to_s }\n" +
+               "    s.resources = '$resourceDir/**/*'\n" +
+               "    s.requires_arc = true\n" +
+               "    s.libraries = 'ObjC', 'guava', 'javax_inject', 'jre_emul', 'jsr305', 'z', 'icucore'\n" +
+               "    s.xcconfig = {\n" +
+               "        'HEADER_SEARCH_PATHS' => '$podsDirectory/j2objc/include $podsDirectory/$publicHeadersDir'\n" +
+               "    }\n" +
+               // http://guides.cocoapods.org/syntax/podspec.html#deployment_target
+               "    s.ios.xcconfig = {\n" +
+               "        'LIBRARY_SEARCH_PATHS' => '$podsDirectory/j2objc/lib'\n" +
+               "    }\n" +
+               "    s.ios.deployment_target = '$minVersionIos'\n" +
+               "    s.ios.vendored_libraries = '$libDirIos/lib${libName}.a'\n" +
+               "    s.prepare_command = <<-CMD\n" +
+               "        ./download_distribution.sh\n" +
+               "    CMD\n" +
+                // Path to the headers for our library and J2ObjC
+               "    s.preserve_paths = 'j2objc', 'src'\n" +
+                // Headers for J2ObjC
+               "    s.header_mappings_dir = 'j2objc/include'\n" +
                "end\n"
     }
 
     @VisibleForTesting
     void validateNumericVersion(String version, String type) {
+        if (version.equals("")) {
+            return
+        }
         // Requires at least a major and minor version number
         Matcher versionMatcher = (version =~ /^[0-9]*(\.[0-9]+)+$/)
         if (!versionMatcher.find()) {
