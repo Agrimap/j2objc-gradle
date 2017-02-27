@@ -15,8 +15,17 @@
  */
 // Based on https://plugins.gradle.org/docs/publish-plugin
 
+// buildscript {
+//     repositories {
+//         mavenLocal()
+//     }
+//     dependencies {
+//         classpath "com.gradle.publish:plugin-publish-plugin:0.9.4"
+//     }
+// }
+
 plugins {
-    id "com.gradle.plugin-publish" version "0.9.0"
+    id "com.gradle.plugin-publish" version "0.9.1"
     // Outputs a BuildInfo.java file with information about the git repo;
     // also fails plugin publishing if your git working directory is unclean.
     // Note this only enforces that the code you are publishing is committed
@@ -24,6 +33,8 @@ plugins {
     id "com.madvay.tools.build.gitbuildinfo" version "0.1.2-alpha"
 }
 apply plugin: 'groovy'
+apply plugin: 'com.gradle.plugin-publish'
+apply plugin: 'maven'
 
 dependencies {
     compile gradleApi()
@@ -31,16 +42,28 @@ dependencies {
 
 sourceCompatibility = 1.7
 task wrapper(type: Wrapper) {
-    gradleVersion = '2.4'
-    distributionUrl = 'https://services.gradle.org/distributions/gradle-2.4-all.zip'
+    gradleVersion = '2.7'
+    distributionUrl = 'https://services.gradle.org/distributions/gradle-2.7-all.zip'
 }
 
 group = 'com.guerinet.j2objcgradle'
 
 // A suffix of -SNAPSHOT means this is not an official release of the
 // system, but built from an intermediate source tree.  Instructions:
-// https://github.com/j2objc-contrib/j2objc-gradle/blob/master/CONTRIBUTING.md#publishing-and-versioning
-version = '0.8.6'
+// https://github.com/agrimap/j2objc-gradle/blob/master/CONTRIBUTING.md#publishing-and-versioning
+version = '0.6.1-agrimap-SNAPSHOT'
+
+configurations {
+    includeInJar
+}
+
+install {
+    repositories.mavenInstaller {
+        pom.version = '0.6.1-agrimap-SNAPSHOT'
+        pom.groupId = 'com.github.j2objccontrib'
+        pom.artifactId = 'j2objcgradle'
+    }
+}
 
 test {
     testLogging {
@@ -51,8 +74,8 @@ test {
 }
 
 pluginBundle {
-    website = 'https://github.com/jguerinet/j2objc-gradle/'
-    vcsUrl = 'https://github.com/jguerinet/j2objc-gradle/'
+    website = 'https://www.github.com/agrimap/j2objc-gradle/'
+    vcsUrl = 'https://github.com/agrimap/j2objc-gradle'
     description =
             "Gradle Plugin for J2ObjC, which is an open-source tool from Google that translates " +
             "Java source code to Objective-C for the iOS (iPhone/iPad) platform. The plugin is " +
@@ -65,7 +88,7 @@ pluginBundle {
 
     plugins {
         j2objcPlugin {
-            id = 'com.guerinet.j2objcgradle'
+            id = 'com.github.j2objccontrib.j2objcgradle'
             displayName = 'J2ObjC Gradle Plugin'
         }
     }
@@ -78,6 +101,6 @@ project.tasks.all {
 }
 
 buildStamp {
-    repoBaseUrl "https://github.com/jguerinet/j2objc-gradle/tree"
+    repoBaseUrl "https://github.com/agrimap/j2objc-gradle/tree/"
     packageName "com.github.j2objccontrib.j2objcgradle"
 }
