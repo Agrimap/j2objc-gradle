@@ -51,7 +51,7 @@ group = 'com.github.j2objccontrib'
 // A suffix of -SNAPSHOT means this is not an official release of the
 // system, but built from an intermediate source tree.  Instructions:
 // https://github.com/agrimap/j2objc-gradle/blob/master/CONTRIBUTING.md#publishing-and-versioning
-version = '0.6.1-agrimap-SNAPSHOT'
+version = '0.7.0-agrimap-SNAPSHOT'
 
 configurations {
     includeInJar
@@ -59,7 +59,7 @@ configurations {
 
 install {
     repositories.mavenInstaller {
-        pom.version = '0.6.1-agrimap-SNAPSHOT'
+        pom.version = '0.7.0-agrimap-SNAPSHOT'
         pom.groupId = 'com.github.j2objccontrib'
         pom.artifactId = 'j2objcgradle'
     }
