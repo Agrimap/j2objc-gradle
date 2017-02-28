@@ -134,14 +134,29 @@ class J2objcConfig {
     String podLicense = ""
 
     /**
-     * Pod homepage URL. Defaults to empty
+     * Pod homepage URL.
      */
-    String podHomepageURL = ""
+    String podHomepageURL = null
 
     /**
      * Pod source URL. Defaults to empty
      */
     String podSourceURL = ""
+
+    /**
+     * Pod requires ARC
+     */
+    boolean requiresArc = true
+
+    /**
+     * Include source in generate Pod
+     */
+    boolean includeSourceFiles = false
+
+    /**
+     *
+     */
+    double swiftVersion = 3.0
 
     // Private helper methods
     // Should use instead of accessing client set 'dest' strings

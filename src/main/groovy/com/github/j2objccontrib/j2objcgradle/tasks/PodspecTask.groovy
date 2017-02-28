@@ -67,6 +67,9 @@ class PodspecTask extends DefaultTask {
     File getDestPodspecDirFile() { return J2objcConfig.from(project).getDestPodspecDirFile() }
 
     @Input
+    File getProjectDirFile() { return project.getProjectDir() }
+
+    @Input
     File getDestLibDirFile() { return J2objcConfig.from(project).getDestLibDirFile() }
 
     String getBasePodName() {
@@ -99,9 +102,13 @@ class PodspecTask extends DefaultTask {
         String homepageURL = config.getPodHomepageURL()
         String sourceURL = config.getPodSourceURL()
         String version = config.getPodVersion()
+        boolean requiresArc = config.isRequiresArc()
+        boolean includeSourceFiles = config.getIncludeSourceFiles()
+        String projectDir = getProjectDirFile().absolutePath
+        double swiftVersion = config.getSwiftVersion()
 
-        String podspecContents = genPodspec(getBasePodName(), relativeHeaderIncludePath, resourceIncludePath, libDirIos,
-                getMinVersionIos(), getLibName(), getJ2objcHome(), author, license, homepageURL, sourceURL, version)
+        String podspecContents = genPodspec(swiftVersion, getBasePodName(), relativeHeaderIncludePath, resourceIncludePath, projectDir, libDirIos,
+                getMinVersionIos(), getLibName(), getJ2objcHome(), author, license, homepageURL, sourceURL, version, requiresArc, includeSourceFiles)
 
         Utils.projectMkDir(project, getDestPodspecDirFile())
 
@@ -116,9 +123,10 @@ class PodspecTask extends DefaultTask {
 
     // Podspec references are relative to project.buildDir
     @VisibleForTesting
-    static String genPodspec(String podname, String publicHeadersDir, String resourceDir,
+    static String genPodspec(double swiftVersion, String podname, String publicHeadersDir, String resourceDir, String projectDir,
                              String libDirIos, String minVersionIos, String libName, String j2objcHome, String author,
-                             String license, String homepageURL, String sourceURL, String version) {
+                             String license, String homepageURL, String sourceURL, String version,
+                             boolean requiresArc, boolean includeSourceFiles) {
 
         // Relative paths for content referenced by CocoaPods
         validatePodspecPath(libDirIos, true)
@@ -134,7 +142,34 @@ class PodspecTask extends DefaultTask {
         // TODO: replace xcconfig with {pod|user}_target_xcconfig
         // See 'Split of xcconfig' from: http://blog.cocoapods.org/CocoaPods-0.38/
 
-        String podsDirectory = "\$(PODS_ROOT)/$podname"
+        if (swiftVersion >= 3.0 && homepageURL == null) {
+            throw new RuntimeException("Required homepageURL in configuration");
+        }
+
+        String podsDirectory
+        String srcFiles
+        String xcconfigHeaders
+        String vendoredLibraries
+        String librarySearchPath
+        if (includeSourceFiles) {
+            podsDirectory = projectDir
+            srcFiles = "    s.source_files = 'src/main/objc/**/*.{h,m}'\n"
+            xcconfigHeaders = "$j2objcHome/frameworks/JRE.framework/Headers " +
+                              "$j2objcHome/frameworks/Guava.framework/Headers " +
+                              "$podsDirectory/build/j2objcOutputs/$publicHeadersDir"
+            vendoredLibraries = ""
+            librarySearchPath = "$j2objcHome/lib"
+        } else {
+            podsDirectory = "\$(PODS_ROOT)/$podname"
+            srcFiles = "";
+            xcconfigHeaders = "$podsDirectory/j2objc/include " +
+                              "$podsDirectory/$publicHeadersDir"
+            vendoredLibraries = "    s.ios.vendored_libraries = '$libDirIos/lib${libName}.a'\n"
+                                "    s.prepare_command = <<-CMD\n" +
+                                "        ./download_distribution.sh\n" +
+                                "    CMD\n"
+            librarySearchPath = "$podsDirectory/j2objc/lib"
+        }
 
         // File and line separators assumed to be '/' and '\n' as podspec can only be used on OS X
         return "Pod::Spec.new do |s|\n" +
@@ -145,21 +180,19 @@ class PodspecTask extends DefaultTask {
                "    s.license = '$license'\n" +
                "    s.author = '$author'\n" +
                "    s.source = { :git => '$sourceURL', :tag => s.version.to_s }\n" +
+               srcFiles +
                "    s.resources = '$resourceDir/**/*'\n" +
-               "    s.requires_arc = true\n" +
+               "    s.requires_arc = $requiresArc\n" +
                "    s.libraries = 'ObjC', 'guava', 'javax_inject', 'jre_emul', 'jsr305', 'z', 'icucore'\n" +
                "    s.xcconfig = {\n" +
-               "        'HEADER_SEARCH_PATHS' => '$podsDirectory/j2objc/include $podsDirectory/$publicHeadersDir'\n" +
+               "        'HEADER_SEARCH_PATHS' => '$xcconfigHeaders'\n" +
                "    }\n" +
                // http://guides.cocoapods.org/syntax/podspec.html#deployment_target
                "    s.ios.xcconfig = {\n" +
-               "        'LIBRARY_SEARCH_PATHS' => '$podsDirectory/j2objc/lib'\n" +
+               "        'LIBRARY_SEARCH_PATHS' => '$librarySearchPath'\n" +
                "    }\n" +
                "    s.ios.deployment_target = '$minVersionIos'\n" +
-               "    s.ios.vendored_libraries = '$libDirIos/lib${libName}.a'\n" +
-               "    s.prepare_command = <<-CMD\n" +
-               "        ./download_distribution.sh\n" +
-               "    CMD\n" +
+               vendoredLibraries +
                 // Path to the headers for our library and J2ObjC
                "    s.preserve_paths = 'j2objc', 'src'\n" +
                 // Headers for J2ObjC
