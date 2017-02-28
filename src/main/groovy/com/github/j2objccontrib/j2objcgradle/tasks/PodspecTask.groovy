@@ -168,6 +168,10 @@ class PodspecTask extends DefaultTask {
                                 "    s.prepare_command = <<-CMD\n" +
                                 "        ./download_distribution.sh\n" +
                                 "    CMD\n"
+                                // Path to the headers for our library and J2ObjC
+                                "    s.preserve_paths = 'j2objc', 'src'\n" +
+                                // Headers for J2ObjC
+                                "    s.header_mappings_dir = 'j2objc/include'\n"
             librarySearchPath = "$podsDirectory/j2objc/lib"
         }
 
@@ -193,10 +197,6 @@ class PodspecTask extends DefaultTask {
                "    }\n" +
                "    s.ios.deployment_target = '$minVersionIos'\n" +
                vendoredLibraries +
-                // Path to the headers for our library and J2ObjC
-               "    s.preserve_paths = 'j2objc', 'src'\n" +
-                // Headers for J2ObjC
-               "    s.header_mappings_dir = 'j2objc/include'\n" +
                "end\n"
     }
 
