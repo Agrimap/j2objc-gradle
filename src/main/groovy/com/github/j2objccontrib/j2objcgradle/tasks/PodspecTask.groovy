@@ -55,6 +55,18 @@ class PodspecTask extends DefaultTask {
     @Input
     String getJ2objcHome() { return Utils.j2objcHome(project) }
 
+
+    static String getUserHome() { return System.properties['user.home'] }
+
+    static String replaceUserHome(String path) {
+        String userHome = getUserHome()
+        if (path.startsWith(userHome)) {
+            return "\$(HOME)" + path.substring(userHome.length())
+        }
+
+        return path
+    }
+
     @Input
     String getLibName() { return "${project.name}-j2objc" }
 
@@ -143,28 +155,28 @@ class PodspecTask extends DefaultTask {
         // See 'Split of xcconfig' from: http://blog.cocoapods.org/CocoaPods-0.38/
 
         if (swiftVersion >= 3.0 && homepageURL == null) {
-            throw new RuntimeException("Required homepageURL in configuration");
+            throw new RuntimeException("Required homepageURL in configuration")
         }
 
-        String podsDirectory
-        String srcFiles
+        String extra
         String xcconfigHeaders
         String vendoredLibraries
         String librarySearchPath
         if (includeSourceFiles) {
-            podsDirectory = projectDir
-            srcFiles = "    s.source_files = 'src/main/objc/**/*.{h,m}'\n"
-            xcconfigHeaders = "$j2objcHome/frameworks/JRE.framework/Headers " +
-                              "$j2objcHome/frameworks/Guava.framework/Headers " +
-                              "$podsDirectory/build/j2objcOutputs/$publicHeadersDir"
-            vendoredLibraries = ""
-            librarySearchPath = "$j2objcHome/lib"
+            String sourceDir = replaceUserHome(projectDir)
+            String j2objcRelativeHome = replaceUserHome(j2objcHome)
+            xcconfigHeaders = "${j2objcRelativeHome}/frameworks/JRE.framework/Headers " +
+                              "${j2objcRelativeHome}/frameworks/Guava.framework/Headers " +
+                              "${sourceDir}/build/j2objcOutputs/$publicHeadersDir"
+            librarySearchPath = "${j2objcRelativeHome}/lib"
+            extra = "    s.source_files = 'src/main/objc/**/*.{h,m}'\n"
+
         } else {
-            podsDirectory = "\$(PODS_ROOT)/$podname"
-            srcFiles = "";
+            String podsDirectory = "\$(PODS_ROOT)/$podname"
             xcconfigHeaders = "$podsDirectory/j2objc/include " +
                               "$podsDirectory/$publicHeadersDir"
-            vendoredLibraries = "    s.ios.vendored_libraries = '$libDirIos/lib${libName}.a'\n"
+            librarySearchPath = "$podsDirectory/j2objc/lib"
+            extra = "    s.ios.vendored_libraries = '$libDirIos/lib${libName}.a'\n"
                                 "    s.prepare_command = <<-CMD\n" +
                                 "        ./download_distribution.sh\n" +
                                 "    CMD\n"
@@ -172,7 +184,7 @@ class PodspecTask extends DefaultTask {
                                 "    s.preserve_paths = 'j2objc', 'src'\n" +
                                 // Headers for J2ObjC
                                 "    s.header_mappings_dir = 'j2objc/include'\n"
-            librarySearchPath = "$podsDirectory/j2objc/lib"
+
         }
 
         // File and line separators assumed to be '/' and '\n' as podspec can only be used on OS X
@@ -184,7 +196,6 @@ class PodspecTask extends DefaultTask {
                "    s.license = '$license'\n" +
                "    s.author = '$author'\n" +
                "    s.source = { :git => '$sourceURL', :tag => s.version.to_s }\n" +
-               srcFiles +
                "    s.resources = '$resourceDir/**/*'\n" +
                "    s.requires_arc = $requiresArc\n" +
                "    s.libraries = 'ObjC', 'guava', 'javax_inject', 'jre_emul', 'jsr305', 'z', 'icucore'\n" +
@@ -196,7 +207,7 @@ class PodspecTask extends DefaultTask {
                "        'LIBRARY_SEARCH_PATHS' => '$librarySearchPath'\n" +
                "    }\n" +
                "    s.ios.deployment_target = '$minVersionIos'\n" +
-               vendoredLibraries +
+               extra +
                "end\n"
     }
 
