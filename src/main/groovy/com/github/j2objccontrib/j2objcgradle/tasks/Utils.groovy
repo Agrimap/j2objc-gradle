@@ -397,23 +397,31 @@ class Utils {
     static void filenameCollisionCheck(FileCollection files) {
         HashMap<String, File> nameMap = [:]
         for (file in files) {
-            log.debug "CollisionCheck: ${file.name}, ${file.absolutePath}"
-            if (nameMap.containsKey(file.name)) {
-                File prevFile = nameMap.get(file.name)
-                String message =
-                        "File name collision detected:\n" +
-                        "  ${prevFile.path}\n" +
-                        "  ${file.path}\n" +
-                        "\n" +
-                        "To disable this check (which may overwrite files), modify build.gradle:\n" +
-                        "\n" +
-                        "j2objcConfig {\n" +
-                        "    forceFilenameCollisionCheck false\n" +
-                        "}\n"
-                throw new InvalidUserDataException(message)
+            if (ignoreCollision(file.name)) {
+                log.debug "Ignoring file CollisionCheck: ${file.name}, ${file.absolutePath}"
+            } else {
+                log.debug "CollisionCheck: ${file.name}, ${file.absolutePath}"
+                if (nameMap.containsKey(file.name)) {
+                    File prevFile = nameMap.get(file.name)
+                    String message =
+                            "File name collision detected:\n" +
+                            "  ${prevFile.path}\n" +
+                            "  ${file.path}\n" +
+                            "\n" +
+                            "To disable this check (which may overwrite files), modify build.gradle:\n" +
+                            "\n" +
+                            "j2objcConfig {\n" +
+                            "    forceFilenameCollisionCheck false\n" +
+                            "}\n"
+                    throw new InvalidUserDataException(message)
+                }
+                nameMap.put(file.name, file)
             }
-            nameMap.put(file.name, file)
         }
+    }
+
+    static boolean ignoreCollision(String fileName) {
+        return "package-info.java".equals(fileName)
     }
 
     // Retrieves the configured source directories from the Java plugin SourceSets.
