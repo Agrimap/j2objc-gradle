@@ -153,6 +153,8 @@ class J2objcConfig {
      */
     boolean includeSourceFiles = false
 
+    List<String> frameworks
+
     /**
      *
      */
@@ -163,6 +165,7 @@ class J2objcConfig {
     File getDestLibDirFile() {
         return project.file(destLibDir)
     }
+
     File getDestSrcDirFile(String sourceSetName, String fileType) {
         assert sourceSetName in ['main', 'test']
         assert fileType in ['objc', 'resources']

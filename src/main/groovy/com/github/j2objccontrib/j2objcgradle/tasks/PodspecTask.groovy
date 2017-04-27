@@ -118,9 +118,12 @@ class PodspecTask extends DefaultTask {
         boolean includeSourceFiles = config.getIncludeSourceFiles()
         String projectDir = getProjectDirFile().absolutePath
         double swiftVersion = config.getSwiftVersion()
+        List<String> frameworks = config.getFrameworks()
 
-        String podspecContents = genPodspec(swiftVersion, getBasePodName(), relativeHeaderIncludePath, resourceIncludePath, projectDir, libDirIos,
-                getMinVersionIos(), getLibName(), getJ2objcHome(), author, license, homepageURL, sourceURL, version, requiresArc, includeSourceFiles)
+        String podspecContents = genPodspec(swiftVersion, getBasePodName(), relativeHeaderIncludePath, resourceIncludePath, projectDir,
+                libDirIos, getMinVersionIos(), getLibName(), getJ2objcHome(), author,
+                license, homepageURL, sourceURL, version,
+                requiresArc, includeSourceFiles, frameworks)
 
         Utils.projectMkDir(project, getDestPodspecDirFile())
 
@@ -135,10 +138,10 @@ class PodspecTask extends DefaultTask {
 
     // Podspec references are relative to project.buildDir
     @VisibleForTesting
-    static String genPodspec(double swiftVersion, String podname, String publicHeadersDir, String resourceDir, String projectDir,
+    static String genPodspec(Double swiftVersion, String podname, String publicHeadersDir, String resourceDir, String projectDir,
                              String libDirIos, String minVersionIos, String libName, String j2objcHome, String author,
                              String license, String homepageURL, String sourceURL, String version,
-                             boolean requiresArc, boolean includeSourceFiles) {
+                             Boolean requiresArc, Boolean includeSourceFiles, List<String> frameworks) {
 
         // Relative paths for content referenced by CocoaPods
         validatePodspecPath(libDirIos, true)
@@ -162,12 +165,23 @@ class PodspecTask extends DefaultTask {
         String xcconfigHeaders
         String vendoredLibraries
         String librarySearchPath
+        String frameworkSearchPaths
         if (includeSourceFiles) {
             String sourceDir = replaceUserHome(projectDir)
             String j2objcRelativeHome = replaceUserHome(j2objcHome)
             xcconfigHeaders = "${j2objcRelativeHome}/frameworks/JRE.framework/Headers " +
-                              "${j2objcRelativeHome}/frameworks/Guava.framework/Headers " +
-                              "${sourceDir}/build/j2objcOutputs/$publicHeadersDir"
+                              "${j2objcRelativeHome}/frameworks/JSR305.framework/Headers " +
+                              "${j2objcRelativeHome}/frameworks/Guava.framework/Headers "
+//                              "${sourceDir}/build/j2objcOutputs/${publicHeadersDir} "
+
+            for (String framework : frameworks) {
+                String framework_underscore = framework.replace("-", "_")
+                xcconfigHeaders += "\$PODS_CONFIGURATION_BUILD_DIR/${framework}/${framework_underscore}.framework/Headers "
+            }
+
+            frameworkSearchPaths = "${j2objcRelativeHome}/frameworks " +
+                                   "\$PODS_CONFIGURATION_BUILD_DIR/**"
+
             librarySearchPath = "${j2objcRelativeHome}/lib"
             extra = "    s.source_files = 'src/main/objc/**/*.{h,m}'\n"
 
@@ -198,14 +212,15 @@ class PodspecTask extends DefaultTask {
                "    s.source = { :git => '$sourceURL', :tag => s.version.to_s }\n" +
                "    s.resources = '$resourceDir/**/*'\n" +
                "    s.requires_arc = $requiresArc\n" +
-               "    s.libraries = 'ObjC', 'guava', 'javax_inject', 'jre_emul', 'jsr305', 'z', 'icucore'\n" +
+//               "    s.libraries = 'ObjC', 'guava', 'javax_inject', 'jre_emul', 'jsr305', 'z', 'icucore'\n" +
                "    s.xcconfig = {\n" +
+               "        'FRAMEWORK_SEARCH_PATHS' => '$frameworkSearchPaths',\n" +
                "        'HEADER_SEARCH_PATHS' => '$xcconfigHeaders'\n" +
                "    }\n" +
                // http://guides.cocoapods.org/syntax/podspec.html#deployment_target
-               "    s.ios.xcconfig = {\n" +
-               "        'LIBRARY_SEARCH_PATHS' => '$librarySearchPath'\n" +
-               "    }\n" +
+//               "    s.ios.xcconfig = {\n" +
+//               "        'LIBRARY_SEARCH_PATHS' => '$librarySearchPath'\n" +
+//               "    }\n" +
                "    s.ios.deployment_target = '$minVersionIos'\n" +
                extra +
                "end\n"
