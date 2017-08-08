@@ -296,6 +296,7 @@ class NativeCompilation {
                     // J2ObjC iOS library dependencies:
                     linker.args '-lc++'                    // C++ runtime for protobuf runtime
                     linker.args '-licucore'                // java.text
+                    linker.args '-liconv'
                     linker.args '-lz'                      // java.util.zip
                     linker.args '-framework', 'Foundation' // core ObjC classes: NSObject, NSString
                     linker.args '-framework', 'Security'   // secure hash generation
