@@ -215,7 +215,8 @@ class PodspecTask extends DefaultTask {
 //               "    s.libraries = 'ObjC', 'guava', 'javax_inject', 'jre_emul', 'jsr305', 'z', 'icucore'\n" +
                "    s.xcconfig = {\n" +
                "        'FRAMEWORK_SEARCH_PATHS' => '$frameworkSearchPaths',\n" +
-               "        'HEADER_SEARCH_PATHS' => '$xcconfigHeaders'\n" +
+               "        'HEADER_SEARCH_PATHS' => '$xcconfigHeaders',\n" +
+               "        'OTHER_LDFLAGS' => '-l\"iconv\"'\n" +
                "    }\n" +
                // http://guides.cocoapods.org/syntax/podspec.html#deployment_target
 //               "    s.ios.xcconfig = {\n" +
