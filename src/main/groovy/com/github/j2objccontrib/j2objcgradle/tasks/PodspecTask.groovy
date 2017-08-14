@@ -174,13 +174,13 @@ class PodspecTask extends DefaultTask {
                               "${j2objcRelativeHome}/frameworks/Guava.framework/Headers "
 //                              "${sourceDir}/build/j2objcOutputs/${publicHeadersDir} "
 
+            frameworkSearchPaths = "${j2objcRelativeHome}/frameworks "
+
             for (String framework : frameworks) {
                 String framework_underscore = framework.replace("-", "_")
                 xcconfigHeaders += "\$PODS_CONFIGURATION_BUILD_DIR/${framework}/${framework_underscore}.framework/Headers "
+                frameworkSearchPaths += "\$PODS_CONFIGURATION_BUILD_DIR/${framework} "
             }
-
-            frameworkSearchPaths = "${j2objcRelativeHome}/frameworks " +
-                                   "\$PODS_CONFIGURATION_BUILD_DIR/**"
 
             librarySearchPath = "${j2objcRelativeHome}/lib"
             extra = "    s.source_files = 'src/main/objc/**/*.{h,m}'\n"
